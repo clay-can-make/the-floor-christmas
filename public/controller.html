@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Floor: Christmas Edition - Host Controller</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .controller-container {
+            padding: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .room-display {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .room-code-large {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 0.5rem;
+            background: rgba(0,0,0,0.3);
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .tv-link {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .tv-link a {
+            color: var(--gold);
+            text-decoration: underline;
+        }
+
+        .player-list-controller {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .player-list-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .answer-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .btn-correct {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .btn-incorrect {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .battle-info {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .current-answer {
+            background: var(--gold);
+            color: var(--christmas-green);
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1rem 0;
+        }
+
+        .timer-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 1rem 0;
+        }
+
+        .timer-player {
+            text-align: center;
+        }
+
+        .timer-player.active {
+            color: var(--gold);
+        }
+
+        .timer-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .slide-controls {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .winner-decision {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+    </div>
+
+    <div class="controller-container">
+        <!-- Create Room Screen -->
+        <div id="create-screen" class="screen active">
+            <h1 class="title" style="font-size: 2rem;">🎄 The Floor 🎄</h1>
+            <h2 class="subtitle">Host Controller</h2>
+
+            <button id="create-room-btn" class="btn btn-primary btn-block btn-large">
+                Create Room
+            </button>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen">
+            <div class="room-display">
+                <div>Room Code:</div>
+                <div class="room-code-large" id="room-code">----</div>
+                <div class="tv-link">
+                    Open TV Display: <a id="tv-link" href="#" target="_blank"></a>
+                </div>
+            </div>
+
+            <div class="player-list-controller" id="player-list-container">
+                <div class="player-list-header">
+                    <span>Players</span>
+                    <span id="ready-count">0/0 Ready</span>
+                </div>
+                <ul class="player-list" id="player-list"></ul>
+            </div>
+
+            <div class="control-buttons">
+                <button id="start-game-btn" class="btn btn-primary btn-block" disabled>
+                    Start Game
+                </button>
+                <div id="start-error" class="status-message error hidden"></div>
+            </div>
+        </div>
+
+        <!-- Game Control Screen -->
+        <div id="game-screen" class="screen">
+            <h2 class="subtitle">Game in Progress</h2>
+
+            <div id="current-turn-info" class="battle-info">
+                <div id="turn-status">Waiting...</div>
+            </div>
+
+            <div id="game-controls" class="control-buttons"></div>
+        </div>
+
+        <!-- Battle Control Screen -->
+        <div id="battle-screen" class="screen">
+            <div class="battle-info">
+                <div id="battle-matchup">
+                    <span id="battle-challenger">Challenger</span>
+                    <span> vs </span>
+                    <span id="battle-defender">Defender</span>
+                </div>
+                <div style="margin-top: 0.5rem; opacity: 0.7;" id="battle-category-display">Category</div>
+            </div>
+
+            <div class="timer-display">
+                <div class="timer-player" id="timer-challenger">
+                    <div id="timer-challenger-name">Challenger</div>
+                    <div class="timer-value" id="timer-challenger-value">45.0</div>
+                </div>
+                <div class="timer-player" id="timer-defender">
+                    <div id="timer-defender-name">Defender</div>
+                    <div class="timer-value" id="timer-defender-value">45.0</div>
+                </div>
+            </div>
+
+            <div id="waiting-for-buzz" class="status-message info">
+                Waiting for player to buzz in...
+            </div>
+
+            <div id="answer-section" class="hidden">
+                <div class="current-answer" id="current-answer">Answer here</div>
+                <div class="correct-answer" id="correct-answer" style="background: #2ecc71; color: white; padding: 0.75rem; border-radius: 10px; font-size: 1rem; margin-top: 0.5rem;">
+                    Correct Answer: <span id="correct-answer-text"></span>
+                </div>
+            </div>
+
+            <div class="answer-buttons">
+                <button id="correct-btn" class="btn btn-correct">✓ Correct</button>
+                <button id="incorrect-btn" class="btn btn-incorrect">✗ Wrong</button>
+            </div>
+
+            <div class="slide-controls">
+                <button id="next-slide-btn" class="btn btn-secondary btn-block">
+                    Next Slide →
+                </button>
+            </div>
+        </div>
+
+        <!-- Post-Battle Screen -->
+        <div id="post-battle-screen" class="screen">
+            <div class="battle-info">
+                <h2 id="battle-result-title">Battle Result</h2>
+                <p id="battle-result-message"></p>
+            </div>
+
+            <div id="winner-decision-section" class="winner-decision">
+                <p class="text-center">Does the winner want to challenge again?</p>
+                <button id="challenge-again-btn" class="btn btn-primary btn-block">
+                    Challenge Again
+                </button>
+                <button id="pass-turn-btn" class="btn btn-secondary btn-block">
+                    Pass to Next Player
+                </button>
+            </div>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="victory-screen" class="screen">
+            <div class="victory-container">
+                <h1 class="victory-title">🏆 Game Over! 🏆</h1>
+                <h2 id="winner-name" class="subtitle"></h2>
+                <p>Has conquered The Floor!</p>
+                <button id="new-game-btn" class="btn btn-primary btn-block mt-3">
+                    New Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/controller.js"></script>
+</body>
+</html>

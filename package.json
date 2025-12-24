@@ -1,0 +1,19 @@
+{
+  "name": "the-floor-christmas",
+  "version": "1.0.0",
+  "description": "The Floor: Christmas Edition - A Jackbox-style multiplayer trivia game",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": ["game", "trivia", "christmas", "multiplayer", "party"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}

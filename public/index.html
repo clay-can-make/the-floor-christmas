@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Floor: Christmas Edition</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+    </div>
+
+    <div class="container">
+        <h1 class="title">🎄 The Floor 🎄</h1>
+        <h2 class="subtitle">Christmas Edition</h2>
+
+        <div class="card">
+            <div class="form-group">
+                <label class="form-label">Enter Room Code</label>
+                <input
+                    type="text"
+                    id="room-code-input"
+                    class="form-input form-input-large"
+                    placeholder="XXXX"
+                    maxlength="4"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                >
+            </div>
+
+            <button id="join-btn" class="btn btn-primary btn-block btn-large">
+                Join Game
+            </button>
+
+            <div class="mt-3 text-center" style="opacity: 0.7;">
+                <p>Or</p>
+            </div>
+
+            <button id="host-btn" class="btn btn-secondary btn-block mt-2">
+                Host a Game
+            </button>
+        </div>
+
+        <div id="error-message" class="status-message error hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const roomCodeInput = document.getElementById('room-code-input');
+        const joinBtn = document.getElementById('join-btn');
+        const hostBtn = document.getElementById('host-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        // Auto-uppercase room code input
+        roomCodeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase();
+            errorMessage.classList.add('hidden');
+        });
+
+        // Join game
+        joinBtn.addEventListener('click', () => {
+            const code = roomCodeInput.value.trim();
+            if (code.length !== 4) {
+                showError('Please enter a 4-letter room code');
+                return;
+            }
+            // Redirect to player page with room code
+            window.location.href = `/play?room=${code}`;
+        });
+
+        // Enter key to join
+        roomCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinBtn.click();
+            }
+        });
+
+        // Host game
+        hostBtn.addEventListener('click', () => {
+            window.location.href = '/controller';
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        // Focus input on load
+        roomCodeInput.focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Floor: Christmas Edition - Audience</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .audience-container {
+            padding: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .audience-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .watching-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .mini-floor {
+            background: var(--dark-bg);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mini-grid {
+            display: grid;
+            gap: 4px;
+        }
+
+        .mini-tile {
+            aspect-ratio: 1;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .battle-mini-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .battle-players {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .battle-player-mini {
+            text-align: center;
+        }
+
+        .battle-player-mini .avatar {
+            font-size: 2rem;
+        }
+
+        .answer-feed {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .answer-feed-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gold);
+        }
+
+        .answer-item {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .answer-player {
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .answer-text {
+            opacity: 0.8;
+        }
+
+        .answer-result {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .answer-result.correct {
+            color: #2ecc71;
+        }
+
+        .answer-result.incorrect {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+    </div>
+
+    <div class="audience-container">
+        <!-- Join Screen -->
+        <div id="join-screen" class="screen active">
+            <h1 class="title" style="font-size: 2rem;">🎄 The Floor 🎄</h1>
+
+            <div class="card">
+                <div class="form-group">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" id="name-input" class="form-input" placeholder="Enter your name" maxlength="12">
+                </div>
+
+                <button id="join-btn" class="btn btn-primary btn-block">
+                    Watch Game
+                </button>
+
+                <div id="join-error" class="status-message error hidden"></div>
+            </div>
+        </div>
+
+        <!-- Watching Screen -->
+        <div id="watching-screen" class="screen">
+            <div class="audience-header">
+                <h2 class="subtitle">The Floor: Christmas Edition</h2>
+                <div class="watching-badge">👀 Watching as Audience</div>
+            </div>
+
+            <!-- Mini Floor Grid -->
+            <div class="mini-floor">
+                <div class="mini-grid" id="mini-grid"></div>
+            </div>
+
+            <!-- Current Battle -->
+            <div class="battle-mini-display" id="battle-display">
+                <div id="battle-status-text">Waiting for battle...</div>
+                <div class="battle-players" id="battle-players"></div>
+            </div>
+
+            <!-- Answer Feed -->
+            <div class="answer-feed">
+                <div class="answer-feed-title">Live Answers</div>
+                <div id="answer-feed"></div>
+            </div>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="victory-screen" class="screen">
+            <div class="victory-container">
+                <h1 class="victory-title">🏆 Game Over! 🏆</h1>
+                <h2 id="winner-name" class="subtitle"></h2>
+                <p>Has conquered The Floor!</p>
+                <div class="victory-decoration">🎄🎅🎁🦌🎄</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/audience.js"></script>
+</body>
+</html>

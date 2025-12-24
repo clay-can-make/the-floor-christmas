@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Floor: Christmas Edition - Player</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .player-container {
+            padding: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-header {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            margin-bottom: 1rem;
+        }
+
+        .player-name-display {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .player-character-display {
+            font-size: 3rem;
+            margin: 0.5rem 0;
+        }
+
+        .selection-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .random-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            margin-bottom: 1rem;
+        }
+
+        .waiting-message {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.2rem;
+        }
+
+        .battle-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .battle-status {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .your-time {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .opponent-time {
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+
+        .buzzer-section {
+            text-align: center;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .answer-input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .hit-timer-btn {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            padding: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .eliminated-view {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .eliminated-emoji {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Player info header with character and territories */
+        .player-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            margin-bottom: 1rem;
+        }
+
+        .player-info-row .player-character-display {
+            font-size: 3rem;
+            margin: 0;
+        }
+
+        .player-info-details {
+            text-align: left;
+        }
+
+        .player-info-details .player-name-display {
+            font-size: 1.3rem;
+        }
+
+        .territory-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 1rem;
+            color: var(--gold);
+            margin-top: 0.25rem;
+        }
+
+        .territory-badge .territory-number {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Challenge area for notifications and questions */
+        .challenge-area {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 2px solid rgba(255,215,0,0.3);
+        }
+
+        .challenge-area .challenge-message {
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+
+        .challenge-area .battle-notification {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .challenge-area .waiting-text {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        /* Full floor view */
+        .floor-view-section {
+            margin-top: 1rem;
+        }
+
+        .floor-view-section h4 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .floor-view-grid {
+            display: grid;
+            gap: 4px;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+
+        .floor-view-tile {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 1.2rem;
+        }
+
+        .floor-view-tile.is-me {
+            box-shadow: inset 0 0 0 2px var(--gold);
+        }
+
+        .floor-view-tile.is-eliminated {
+            opacity: 0.4;
+            filter: grayscale(0.5);
+        }
+
+        .floor-view-tile-name {
+            font-size: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            text-align: center;
+        }
+
+        /* Player Floor Grid for opponent selection */
+        .player-floor-container {
+            width: 100%;
+            padding: 0.5rem;
+        }
+
+        .player-floor-grid {
+            display: grid;
+            gap: 6px;
+            padding: 0.75rem;
+            background: var(--dark-bg);
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 40px rgba(255,215,0,0.1);
+        }
+
+        .player-floor-tile {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .player-floor-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
+            pointer-events: none;
+        }
+
+        .player-floor-tile.is-me {
+            box-shadow: inset 0 0 0 3px var(--gold);
+        }
+
+        .player-floor-tile.is-opponent {
+            cursor: pointer;
+            animation: opponentPulse 1.5s ease-in-out infinite;
+        }
+
+        .player-floor-tile.is-opponent:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px var(--gold), 0 0 15px rgba(255,215,0,0.6);
+        }
+
+        .player-floor-tile.is-opponent:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes opponentPulse {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 0 4px rgba(255,215,0,0.8), 0 0 10px rgba(255,215,0,0.4); }
+        }
+
+        .player-tile-character {
+            font-size: 1.8rem;
+            z-index: 1;
+        }
+
+        .player-tile-name {
+            font-size: 0.6rem;
+            font-weight: 600;
+            z-index: 1;
+            text-align: center;
+            padding: 0 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        /* Adjust for smaller screens */
+        @media (max-width: 360px) {
+            .player-floor-grid {
+                gap: 4px;
+                padding: 0.5rem;
+            }
+            .player-tile-character {
+                font-size: 1.4rem;
+            }
+            .player-tile-name {
+                font-size: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+    </div>
+
+    <div class="player-container">
+        <!-- Join Screen -->
+        <div id="join-screen" class="screen active">
+            <h1 class="title" style="font-size: 2rem;">🎄 The Floor 🎄</h1>
+
+            <div class="card">
+                <div class="form-group">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" id="name-input" class="form-input" placeholder="Enter your name" maxlength="12">
+                </div>
+
+                <button id="join-btn" class="btn btn-primary btn-block">
+                    Join Game
+                </button>
+
+                <div id="join-error" class="status-message error hidden"></div>
+            </div>
+        </div>
+
+        <!-- Character Selection -->
+        <div id="character-screen" class="screen">
+            <h2 class="selection-title">Choose Your Character</h2>
+
+            <div class="character-grid" id="character-grid"></div>
+
+            <button id="confirm-character-btn" class="btn btn-primary btn-block mt-2" disabled>
+                Confirm Character
+            </button>
+        </div>
+
+        <!-- Category Selection -->
+        <div id="category-screen" class="screen">
+            <div class="player-header">
+                <div class="player-character-display" id="my-character-display">🎅</div>
+                <div class="player-name-display" id="my-name-display">Player</div>
+            </div>
+
+            <h2 class="selection-title">Choose Your Category</h2>
+
+            <button id="random-category-btn" class="btn random-btn btn-block">
+                🎲 Random Category
+            </button>
+
+            <div class="category-list" id="category-list"></div>
+        </div>
+
+        <!-- Waiting in Lobby -->
+        <div id="waiting-screen" class="screen">
+            <div class="player-header">
+                <div class="player-character-display" id="waiting-character">🎅</div>
+                <div class="player-name-display" id="waiting-name">Player</div>
+                <div class="mt-1" id="waiting-category">Category</div>
+            </div>
+
+            <div class="waiting-message">
+                <div class="mb-2">✓ You're ready!</div>
+                <div style="opacity: 0.7;">Waiting for host to start the game...</div>
+            </div>
+        </div>
+
+        <!-- Game View (watching) -->
+        <div id="game-screen" class="screen">
+            <!-- Player info with character and territories side by side -->
+            <div class="player-info-row">
+                <div class="player-character-display" id="game-character">🎅</div>
+                <div class="player-info-details">
+                    <div class="player-name-display" id="game-name">Player</div>
+                    <div class="territory-badge">
+                        <span class="territory-number" id="my-territories">0</span>
+                        <span>territories</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Challenge area for notifications -->
+            <div class="challenge-area">
+                <div class="challenge-message" id="challenge-message">
+                    <span class="waiting-text">Waiting for your turn...</span>
+                </div>
+            </div>
+
+            <!-- Opponent selection (shown when it's your turn) -->
+            <div id="opponent-selection" class="hidden">
+                <h3 class="selection-title">Tap an opponent to challenge:</h3>
+                <div class="player-floor-container">
+                    <div id="player-floor-grid" class="player-floor-grid"></div>
+                </div>
+            </div>
+
+            <!-- Floor view showing all territories -->
+            <div class="floor-view-section">
+                <h4>The Floor</h4>
+                <div id="floor-view-grid" class="floor-view-grid"></div>
+            </div>
+        </div>
+
+        <!-- Battle View -->
+        <div id="battle-screen" class="screen">
+            <div class="battle-view">
+                <div class="battle-status">
+                    <div id="battle-role">You are challenging!</div>
+                    <div class="your-time" id="your-time">45.0</div>
+                    <div class="opponent-time">Opponent: <span id="opponent-time">45.0</span>s</div>
+                </div>
+
+                <!-- Current Question Display -->
+                <div class="challenge-area" style="margin-bottom: 1rem; width: 100%;">
+                    <div class="challenge-message" id="battle-question">
+                        <span class="battle-notification">Question loading...</span>
+                    </div>
+                </div>
+
+                <div class="buzzer-section" id="buzzer-section">
+                    <input type="text" id="answer-input" class="answer-input" placeholder="Type your answer...">
+
+                    <button id="buzz-btn" class="buzzer-btn">
+                        BUZZ!
+                    </button>
+
+                    <button id="pass-btn" class="pass-btn">
+                        Pass (3s penalty)
+                    </button>
+                </div>
+
+                <div id="waiting-confirmation" class="hidden">
+                    <div class="status-message info">
+                        Waiting for host to confirm your answer...
+                    </div>
+                </div>
+
+                <div id="correct-answer-section" class="hidden">
+                    <div class="status-message success">Correct!</div>
+                </div>
+
+                <div id="wrong-answer-section" class="hidden">
+                    <div class="status-message error">Wrong answer! Try again...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Eliminated View -->
+        <div id="eliminated-screen" class="screen">
+            <div class="eliminated-view">
+                <div class="eliminated-emoji">😢</div>
+                <h2>You've been eliminated!</h2>
+                <p class="mt-2" style="opacity: 0.7;">You can still watch the game on the main screen.</p>
+            </div>
+        </div>
+
+        <!-- Victory View -->
+        <div id="victory-screen" class="screen">
+            <div class="victory-container">
+                <h1 class="victory-title">🏆 YOU WON! 🏆</h1>
+                <div class="victory-decoration">🎄🎅🎁🦌🎄</div>
+                <p>You conquered The Floor!</p>
+            </div>
+        </div>
+
+        <!-- Audience View -->
+        <div id="audience-screen" class="screen">
+            <div class="waiting-message">
+                <div class="mb-2">👀 Watching as Audience</div>
+                <div style="opacity: 0.7;">The game is in progress. Watch on the main screen!</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/player.js"></script>
+</body>
+</html>

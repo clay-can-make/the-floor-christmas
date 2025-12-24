@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Floor: Christmas Edition</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+    </div>
+
+    <div id="game-container">
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen active">
+            <h1 class="game-title">🎄 The Floor 🎄</h1>
+            <h2 class="subtitle">Christmas Edition</h2>
+            <div class="menu-buttons">
+                <button id="btn-2players" class="menu-btn">2 Players</button>
+                <button id="btn-4players" class="menu-btn">4 Players</button>
+                <button id="btn-6players" class="menu-btn">6 Players</button>
+            </div>
+            <p class="instructions">Battle for control of The Floor with Christmas trivia!</p>
+        </div>
+
+        <!-- Player Setup Screen -->
+        <div id="setup-screen" class="screen">
+            <h2>Enter Player Names</h2>
+            <div id="player-inputs"></div>
+            <button id="btn-start-game" class="menu-btn start-btn">Start Game!</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div id="game-header">
+                <div id="current-turn"></div>
+                <div id="score-display"></div>
+            </div>
+            <canvas id="floor-canvas"></canvas>
+            <div id="game-instructions">Select an adjacent territory to challenge!</div>
+        </div>
+
+        <!-- Battle Screen -->
+        <div id="battle-screen" class="screen">
+            <div id="battle-header">
+                <div class="challenger" id="challenger-info"></div>
+                <div class="vs">⚔️ VS ⚔️</div>
+                <div class="defender" id="defender-info"></div>
+            </div>
+            <div id="question-container">
+                <div id="question-category"></div>
+                <div id="question-text"></div>
+                <div id="answer-options"></div>
+            </div>
+            <div id="battle-timer">
+                <div id="timer-bar"></div>
+            </div>
+            <div id="battle-status"></div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <div id="result-content">
+                <h2 id="result-title"></h2>
+                <p id="result-message"></p>
+                <button id="btn-continue" class="menu-btn">Continue</button>
+            </div>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="victory-screen" class="screen">
+            <div class="victory-content">
+                <h1>🏆 VICTORY! 🏆</h1>
+                <h2 id="winner-name"></h2>
+                <p>Has conquered The Floor!</p>
+                <div class="victory-decoration">🎄🎅🎁🦌🎄</div>
+                <button id="btn-play-again" class="menu-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="trivia.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
