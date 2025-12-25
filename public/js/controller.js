@@ -74,16 +74,16 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
 // Battle controls
 document.getElementById('correct-btn').addEventListener('click', () => {
     socket.emit('confirm-answer', { correct: true });
-    document.getElementById('answer-section').classList.add('hidden');
     document.getElementById('waiting-for-buzz').classList.remove('hidden');
     document.getElementById('waiting-for-buzz').textContent = 'Answer confirmed! Player can hit timer...';
+    document.getElementById('current-answer').textContent = 'Waiting for buzz...';
 });
 
 document.getElementById('incorrect-btn').addEventListener('click', () => {
     socket.emit('confirm-answer', { correct: false });
-    document.getElementById('answer-section').classList.add('hidden');
     document.getElementById('waiting-for-buzz').classList.remove('hidden');
     document.getElementById('waiting-for-buzz').textContent = 'Wrong! New question...';
+    document.getElementById('current-answer').textContent = 'Waiting for buzz...';
 });
 
 document.getElementById('next-slide-btn').addEventListener('click', () => {

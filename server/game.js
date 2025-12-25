@@ -8,10 +8,8 @@ class GameManager {
         this.timers = new Map(); // roomCode -> timer interval
     }
 
-    // Calculate grid size based on player count
+    // Calculate grid size based on player count (minimum 3x3)
     calculateGridSize(playerCount) {
-        if (playerCount <= 4) return { rows: 2, cols: 2 };
-        if (playerCount <= 6) return { rows: 2, cols: 3 };
         if (playerCount <= 9) return { rows: 3, cols: 3 };
         if (playerCount <= 12) return { rows: 3, cols: 4 };
         if (playerCount <= 16) return { rows: 4, cols: 4 };
