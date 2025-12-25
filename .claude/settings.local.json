@@ -7,7 +7,9 @@
       "Bash(dir:*)",
       "Bash(ls:*)",
       "Bash(rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node -e:*)",
+      "Bash(timeout 5 node:*)"
     ]
   }
 }
