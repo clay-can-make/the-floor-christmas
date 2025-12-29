@@ -34,6 +34,24 @@ const CHARACTER_EMOJIS = {
     'grinch': '👹', 'rudolph': '🔴', 'frosty': '☃️', 'jack-frost': '❄️'
 };
 
+// Check if a string is an image URL
+function isImageUrl(str) {
+    if (!str) return false;
+    const lowerStr = str.toLowerCase();
+    return (lowerStr.startsWith('http://') || lowerStr.startsWith('https://')) &&
+           (lowerStr.endsWith('.jpg') || lowerStr.endsWith('.jpeg') ||
+            lowerStr.endsWith('.png') || lowerStr.endsWith('.gif') ||
+            lowerStr.endsWith('.webp'));
+}
+
+// Format question as text or image
+function formatQuestion(question) {
+    if (isImageUrl(question)) {
+        return `<img src="${question}" class="question-image" alt="Question image" style="max-width: 100%; max-height: 200px; border-radius: 8px;">`;
+    }
+    return question;
+}
+
 // Get room code from URL
 const urlParams = new URLSearchParams(window.location.search);
 roomCode = urlParams.get('room');
@@ -170,7 +188,7 @@ function setChallengeMessage(message, type = 'normal') {
 function setBattleQuestion(question) {
     const el = document.getElementById('battle-question');
     if (!el) return;
-    el.innerHTML = `<span class="battle-notification">${question}</span>`;
+    el.innerHTML = `<span class="battle-notification">${formatQuestion(question)}</span>`;
 }
 
 // Join button
