@@ -398,7 +398,12 @@ function startBattle(targetTile) {
 
     // Display question
     document.getElementById('question-category').textContent = question.category;
-    document.getElementById('question-text').textContent = question.question;
+    const questionTextEl = document.getElementById('question-text');
+    if (isImageUrl(question.question)) {
+        questionTextEl.innerHTML = `<img src="${question.question}" style="max-width: 100%; max-height: 300px; border-radius: 10px;" alt="Question image">`;
+    } else {
+        questionTextEl.textContent = question.question;
+    }
 
     // Display answer options
     const optionsContainer = document.getElementById('answer-options');
@@ -563,6 +568,16 @@ function resetGame() {
         gameOver: false
     };
     showScreen('title');
+}
+
+// Check if a string is an image URL
+function isImageUrl(str) {
+    if (!str) return false;
+    const lowerStr = str.toLowerCase();
+    return (lowerStr.startsWith('http://') || lowerStr.startsWith('https://')) &&
+           (lowerStr.endsWith('.jpg') || lowerStr.endsWith('.jpeg') ||
+            lowerStr.endsWith('.png') || lowerStr.endsWith('.gif') ||
+            lowerStr.endsWith('.webp'));
 }
 
 // Add roundRect polyfill for older browsers

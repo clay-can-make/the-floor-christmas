@@ -139,6 +139,24 @@ function getPlayerColor(index) {
     return colors[index % colors.length];
 }
 
+// Check if a string is an image URL
+function isImageUrl(str) {
+    if (!str) return false;
+    const lowerStr = str.toLowerCase();
+    return (lowerStr.startsWith('http://') || lowerStr.startsWith('https://')) &&
+           (lowerStr.endsWith('.jpg') || lowerStr.endsWith('.jpeg') ||
+            lowerStr.endsWith('.png') || lowerStr.endsWith('.gif') ||
+            lowerStr.endsWith('.webp'));
+}
+
+// Format question as text or image
+function formatQuestion(question) {
+    if (isImageUrl(question)) {
+        return `<img src="${question}" class="slide-image" alt="Question image">`;
+    }
+    return question;
+}
+
 // Show buzz notification
 function showBuzzNotification(playerName, answer) {
     const notification = document.getElementById('buzz-notification');
@@ -273,7 +291,7 @@ socket.on('battle-start', ({ challenger, defender, category, categoryIcon, quest
     // Show the first question
     document.getElementById('slide-content').innerHTML = `
         <div class="question-number">Question ${questionNumber} of ${totalQuestions}</div>
-        <div class="question-text">${question}</div>
+        <div class="question-text">${formatQuestion(question)}</div>
     `;
 
     // Reset timers
@@ -307,7 +325,7 @@ socket.on('answer-confirmed', ({ correct, playerId, newTime, question, questionN
         questionUpdateTimeout = setTimeout(() => {
             document.getElementById('slide-content').innerHTML = `
                 <div class="question-number">Question ${questionNumber} of ${totalQuestions}</div>
-                <div class="question-text">${question}</div>
+                <div class="question-text">${formatQuestion(question)}</div>
             `;
             questionUpdateTimeout = null;
         }, 1500);
@@ -317,7 +335,7 @@ socket.on('answer-confirmed', ({ correct, playerId, newTime, question, questionN
 socket.on('turn-switched', ({ activePlayer, slideNumber, question, questionNumber, totalQuestions }) => {
     document.getElementById('slide-content').innerHTML = `
         <div class="question-number">Question ${questionNumber} of ${totalQuestions}</div>
-        <div class="question-text">${question}</div>
+        <div class="question-text">${formatQuestion(question)}</div>
     `;
 });
 
@@ -336,7 +354,7 @@ socket.on('player-passed', ({ passCount, challengerTime, defenderTime, question,
     questionUpdateTimeout = setTimeout(() => {
         document.getElementById('slide-content').innerHTML = `
             <div class="question-number">Question ${questionNumber} of ${totalQuestions}</div>
-            <div class="question-text">${question}</div>
+            <div class="question-text">${formatQuestion(question)}</div>
         `;
         questionUpdateTimeout = null;
     }, 1500);
@@ -345,7 +363,7 @@ socket.on('player-passed', ({ passCount, challengerTime, defenderTime, question,
 socket.on('slide-advanced', ({ slideNumber, question, questionNumber, totalQuestions }) => {
     document.getElementById('slide-content').innerHTML = `
         <div class="question-number">Question ${questionNumber} of ${totalQuestions}</div>
-        <div class="question-text">${question}</div>
+        <div class="question-text">${formatQuestion(question)}</div>
     `;
 });
 
