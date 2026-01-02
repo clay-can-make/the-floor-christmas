@@ -2,6 +2,53 @@
 
 const socket = io();
 
+// Generate or retrieve a persistent device ID
+function getDeviceId() {
+    let deviceId = localStorage.getItem('floor_device_id');
+    if (!deviceId) {
+        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('floor_device_id', deviceId);
+    }
+    return deviceId;
+}
+
+const deviceId = getDeviceId();
+
+// Save player state to localStorage
+function savePlayerState() {
+    if (!roomCode) return;
+    const state = {
+        roomCode,
+        playerName,
+        selectedCharacter,
+        selectedCategory,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('floor_player_state_' + roomCode, JSON.stringify(state));
+}
+
+// Load player state from localStorage
+function loadPlayerState(code) {
+    const stored = localStorage.getItem('floor_player_state_' + code);
+    if (!stored) return null;
+    try {
+        const state = JSON.parse(stored);
+        // Expire after 4 hours
+        if (Date.now() - state.timestamp > 4 * 60 * 60 * 1000) {
+            localStorage.removeItem('floor_player_state_' + code);
+            return null;
+        }
+        return state;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Clear player state
+function clearPlayerState(code) {
+    localStorage.removeItem('floor_player_state_' + code);
+}
+
 // State
 let roomCode = null;
 let playerId = null;
@@ -17,6 +64,9 @@ let takenCategories = [];
 let currentGrid = null;
 let currentGridSize = null;
 let currentPlayers = [];
+let isRoomLeader = false;
+let readyPlayerCount = 0;
+let totalPlayerCount = 0;
 
 // Player colors (matching host.js)
 const PLAYER_COLORS = [
@@ -204,7 +254,7 @@ document.getElementById('join-btn').addEventListener('click', () => {
         return;
     }
 
-    socket.emit('join-room', { roomCode, playerName }, (response) => {
+    socket.emit('join-room', { roomCode, playerName, deviceId }, (response) => {
         if (response.success) {
             playerId = response.playerId;
 
@@ -213,6 +263,10 @@ document.getElementById('join-btn').addEventListener('click', () => {
             } else {
                 // Store categories for later use
                 availableCategories = response.categories || [];
+                // Track if this player is the room leader
+                isRoomLeader = response.isRoomLeader || false;
+                // Save initial state
+                savePlayerState();
                 // Render character selection
                 renderCharacterGrid(response.availableCharacters);
                 showScreen('character');
@@ -263,6 +317,8 @@ document.getElementById('confirm-character-btn').addEventListener('click', () =>
         if (response.success) {
             document.getElementById('my-character-display').textContent = getCharacterEmoji(selectedCharacter);
             document.getElementById('my-name-display').textContent = playerName;
+            // Save state after character selection
+            savePlayerState();
             // Render the category list before showing the screen
             renderCategoryList(availableCategories, takenCategories);
             showScreen('category');
@@ -309,6 +365,8 @@ function selectCategory(categoryId) {
     socket.emit('select-category', { category: categoryId }, (response) => {
         if (response.success) {
             selectedCategory = response.category;
+            // Save state after category selection
+            savePlayerState();
 
             document.getElementById('waiting-character').textContent = getCharacterEmoji(selectedCharacter);
             document.getElementById('waiting-name').textContent = playerName;
@@ -317,11 +375,42 @@ function selectCategory(categoryId) {
             const categoryName = categoryObj ? categoryObj.name : selectedCategory;
             document.getElementById('waiting-category').textContent = categoryName;
 
+            // Update ready count from response
+            if (response.readyCount !== undefined) {
+                readyPlayerCount = response.readyCount;
+                totalPlayerCount = response.totalPlayers || readyPlayerCount;
+            }
+
+            // Show/hide start game section based on room leader status
+            updateStartGameButton();
+
             showScreen('waiting');
         } else {
             alert(response.error);
         }
     });
+}
+
+// Update start game button visibility and state
+function updateStartGameButton() {
+    const startSection = document.getElementById('start-game-section');
+    const startBtn = document.getElementById('start-game-btn');
+    const readyInfo = document.getElementById('ready-player-info');
+
+    if (!startSection) return;
+
+    if (isRoomLeader) {
+        startSection.classList.remove('hidden');
+        // Need at least 2 ready players to start
+        const canStart = readyPlayerCount >= 2;
+        startBtn.disabled = !canStart;
+
+        if (readyInfo) {
+            readyInfo.textContent = `${readyPlayerCount} player${readyPlayerCount !== 1 ? 's' : ''} ready`;
+        }
+    } else {
+        startSection.classList.add('hidden');
+    }
 }
 
 // Show error
@@ -343,6 +432,24 @@ document.getElementById('pass-btn').addEventListener('click', () => {
     socket.emit('pass');
 });
 
+// Start game button (for room leader)
+const startGameBtn = document.getElementById('start-game-btn');
+if (startGameBtn) {
+    startGameBtn.addEventListener('click', () => {
+        startGameBtn.disabled = true;
+        startGameBtn.textContent = 'Starting...';
+
+        socket.emit('start-game', (response) => {
+            if (!response.success) {
+                alert(response.error);
+                startGameBtn.disabled = false;
+                startGameBtn.textContent = 'Start Game';
+            }
+            // If successful, game-started event will handle the transition
+        });
+    });
+}
+
 
 // Socket Events
 
@@ -358,7 +465,7 @@ socket.on('character-selected', ({ playerId: pid, character }) => {
 });
 
 // Listen for when other players select categories
-socket.on('player-ready', ({ playerId: pid, category }) => {
+socket.on('player-ready', ({ playerId: pid, category, readyCount, totalPlayers }) => {
     if (pid !== playerId) {
         // Add to taken categories and re-render if on category screen
         if (!takenCategories.includes(category)) {
@@ -367,6 +474,13 @@ socket.on('player-ready', ({ playerId: pid, category }) => {
         if (screens.category.classList.contains('active')) {
             renderCategoryList(availableCategories, takenCategories);
         }
+    }
+
+    // Update ready count for start game button
+    if (readyCount !== undefined) {
+        readyPlayerCount = readyCount;
+        totalPlayerCount = totalPlayers || readyPlayerCount;
+        updateStartGameButton();
     }
 });
 
@@ -495,6 +609,11 @@ socket.on('timer-update', ({ challengerTime, defenderTime, activePlayer }) => {
 });
 
 socket.on('answer-confirmed', ({ correct, playerId: pid, newTime, question }) => {
+    // Update the question for all players in battle when wrong answer
+    if (inBattle && !correct && question) {
+        setBattleQuestion(question);
+    }
+
     if (pid === playerId) {
         document.getElementById('waiting-confirmation').classList.add('hidden');
 
@@ -511,15 +630,9 @@ socket.on('answer-confirmed', ({ correct, playerId: pid, newTime, question }) =>
                 document.getElementById('your-time').textContent = (newTime / 1000).toFixed(1);
             }
 
-            // Show the new question
-            if (question) {
-                setBattleQuestion(question);
-            }
-
             document.getElementById('wrong-answer-section').classList.remove('hidden');
             document.getElementById('buzzer-section').classList.remove('hidden');
             document.getElementById('answer-input').value = '';
-            document.getElementById('answer-input').focus();
 
             setTimeout(() => {
                 document.getElementById('wrong-answer-section').classList.add('hidden');
@@ -542,10 +655,6 @@ socket.on('turn-switched', ({ activePlayer, question }) => {
         const isMyTurnInBattle = activePlayer === playerId;
         document.getElementById('buzz-btn').disabled = !isMyTurnInBattle;
         document.getElementById('pass-btn').disabled = !isMyTurnInBattle;
-
-        if (isMyTurnInBattle) {
-            document.getElementById('answer-input').focus();
-        }
     }
 });
 
@@ -567,7 +676,6 @@ socket.on('player-passed', ({ playerId: passedPlayerId, challengerTime, defender
         if (passedPlayerId === playerId) {
             document.getElementById('buzzer-section').classList.remove('hidden');
             document.getElementById('answer-input').value = '';
-            document.getElementById('answer-input').focus();
         }
     }
 });
@@ -618,11 +726,139 @@ socket.on('game-over', ({ winner }) => {
 
 socket.on('host-disconnected', () => {
     alert('Host disconnected! The game has ended.');
+    clearPlayerState(roomCode);
     window.location.href = '/';
 });
 
-// Focus name input on load
-document.getElementById('name-input').focus();
+// Handle successful rejoin
+socket.on('rejoin-success', (data) => {
+    playerId = data.playerId;
+    playerName = data.playerName;
+    selectedCharacter = data.character;
+    selectedCategory = data.category;
+    availableCategories = data.categories || [];
+    isRoomLeader = data.isRoomLeader || false;
+    readyPlayerCount = data.readyCount || 0;
+    totalPlayerCount = data.totalPlayers || 0;
+
+    // Update stored grid data
+    if (data.grid) currentGrid = data.grid;
+    if (data.gridSize) currentGridSize = data.gridSize;
+    if (data.players) currentPlayers = data.players;
+
+    // Find my territories
+    if (data.players) {
+        const me = data.players.find(p => p.id === playerId);
+        if (me) {
+            myTerritories = me.territories;
+        }
+    }
+
+    // Show appropriate screen based on game state
+    if (data.gamePhase === 'battle' && data.inBattle) {
+        // Player is in an active battle
+        inBattle = true;
+        iAmChallenger = data.iAmChallenger;
+
+        document.getElementById('battle-role').textContent =
+            iAmChallenger ? "You are the CHALLENGER!" : "You are DEFENDING!";
+
+        // Set up battle UI
+        document.getElementById('buzzer-section').classList.remove('hidden');
+        document.getElementById('waiting-confirmation').classList.add('hidden');
+        document.getElementById('correct-answer-section').classList.add('hidden');
+        document.getElementById('wrong-answer-section').classList.add('hidden');
+        document.getElementById('answer-input').value = '';
+
+        if (data.question) {
+            setBattleQuestion(data.question);
+        }
+
+        // Set button states based on active player
+        const isMyTurnInBattle = data.activePlayer === playerId;
+        document.getElementById('buzz-btn').disabled = !isMyTurnInBattle;
+        document.getElementById('pass-btn').disabled = !isMyTurnInBattle;
+
+        showScreen('battle');
+    } else if (data.gameStarted) {
+        // Game is in progress but not in battle
+        document.getElementById('game-character').textContent = getCharacterEmoji(selectedCharacter);
+        document.getElementById('game-name').textContent = playerName;
+        document.getElementById('my-territories').textContent = myTerritories;
+
+        // Render floor view
+        if (currentGrid && currentGridSize && currentPlayers) {
+            renderFloorView(currentGrid, currentGridSize, currentPlayers);
+        }
+
+        // Check if it's my turn to select opponent
+        if (data.currentChallenger === playerId) {
+            isMyTurn = true;
+            setChallengeMessage("It's your turn! Select an opponent below.", 'battle');
+            document.getElementById('opponent-selection').classList.remove('hidden');
+            if (data.availableOpponents) {
+                renderOpponentGrid(currentGrid, currentGridSize, currentPlayers, data.availableOpponents);
+            }
+        } else {
+            setChallengeMessage("Waiting for your turn...", 'waiting');
+            document.getElementById('opponent-selection').classList.add('hidden');
+        }
+
+        showScreen('game');
+    } else if (selectedCategory) {
+        // Waiting for game to start
+        document.getElementById('waiting-character').textContent = getCharacterEmoji(selectedCharacter);
+        document.getElementById('waiting-name').textContent = playerName;
+        const categoryObj = availableCategories.find(c => c.id === selectedCategory);
+        const categoryName = categoryObj ? categoryObj.name : selectedCategory;
+        document.getElementById('waiting-category').textContent = categoryName;
+        updateStartGameButton();
+        showScreen('waiting');
+    } else if (selectedCharacter) {
+        // Need to select category
+        document.getElementById('my-character-display').textContent = getCharacterEmoji(selectedCharacter);
+        document.getElementById('my-name-display').textContent = playerName;
+        renderCategoryList(availableCategories, data.takenCategories || []);
+        showScreen('category');
+    } else {
+        // Need to select character
+        renderCharacterGrid(data.availableCharacters || []);
+        showScreen('character');
+    }
+
+    console.log('Successfully rejoined game');
+});
+
+// Attempt to rejoin if we have stored state
+function attemptRejoin() {
+    if (!roomCode) return;
+
+    const savedState = loadPlayerState(roomCode);
+    if (savedState && savedState.playerName) {
+        // Pre-fill name
+        document.getElementById('name-input').value = savedState.playerName;
+
+        // Try to rejoin with stored data
+        socket.emit('rejoin-as-player', {
+            roomCode,
+            deviceId,
+            playerName: savedState.playerName
+        }, (response) => {
+            if (!response.success) {
+                // Rejoin failed, show normal join screen
+                console.log('Rejoin failed:', response.error);
+                // Name is still pre-filled for convenience
+            }
+            // If successful, rejoin-success event will handle the UI
+        });
+    }
+}
 
 // Initialize
+document.getElementById('name-input').focus();
 console.log('Player view initialized, room:', roomCode);
+
+// Attempt rejoin after socket connects
+socket.on('connect', () => {
+    attemptRejoin();
+});

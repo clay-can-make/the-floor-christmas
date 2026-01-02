@@ -395,7 +395,18 @@
 
             <div class="waiting-message">
                 <div class="mb-2">✓ You're ready!</div>
-                <div style="opacity: 0.7;">Waiting for host to start the game...</div>
+                <div style="opacity: 0.7;" id="waiting-status-text">Waiting for the game to start...</div>
+            </div>
+
+            <!-- Start game section (only visible to room leader) -->
+            <div id="start-game-section" class="hidden" style="text-align: center; margin-top: 2rem;">
+                <div id="ready-player-info" style="margin-bottom: 1rem; color: var(--gold);">0 players ready</div>
+                <button id="start-game-btn" class="btn btn-primary btn-block" disabled>
+                    Start Game
+                </button>
+                <div style="font-size: 0.85rem; opacity: 0.7; margin-top: 0.5rem;">
+                    Need at least 2 players to start
+                </div>
             </div>
         </div>
 
@@ -465,7 +476,7 @@
 
                 <div id="waiting-confirmation" class="hidden">
                     <div class="status-message info">
-                        Waiting for host to confirm your answer...
+                        Checking your answer...
                     </div>
                 </div>
 

@@ -128,7 +128,7 @@ io.on('connection', (socket) => {
     });
 
     // Player joins a room
-    socket.on('join-room', ({ roomCode, playerName }, callback) => {
+    socket.on('join-room', ({ roomCode, playerName, deviceId }, callback) => {
         const code = roomCode.toUpperCase();
         const room = roomManager.getRoom(code);
 
@@ -173,23 +173,162 @@ io.on('connection', (socket) => {
             category: null,
             ready: false,
             territories: 0,
-            eliminated: false
+            eliminated: false,
+            deviceId: deviceId || null
         };
 
         room.players.push(player);
+
+        // First player is the room leader
+        const isRoomLeader = room.players.length === 1;
 
         callback({
             success: true,
             role: 'player',
             playerId: socket.id,
             availableCharacters: room.getAvailableCharacters(),
-            categories: room.categories
+            categories: room.categories,
+            isRoomLeader: isRoomLeader
         });
 
         // Notify host and other players
         io.to(code).emit('player-joined', {
             player: { id: socket.id, name: playerName },
             playerCount: room.players.length
+        });
+    });
+
+    // Player attempts to rejoin after disconnect
+    socket.on('rejoin-as-player', ({ roomCode, deviceId, playerName }, callback) => {
+        const code = roomCode.toUpperCase();
+        const room = roomManager.getRoom(code);
+
+        if (!room) {
+            return callback({ success: false, error: 'Room not found' });
+        }
+
+        // Find player by deviceId
+        let player = room.players.find(p => p.deviceId === deviceId);
+
+        // If not found by deviceId, try to find by name (for backwards compatibility)
+        if (!player && playerName) {
+            player = room.players.find(p => p.name === playerName && p.disconnected);
+        }
+
+        if (!player) {
+            return callback({ success: false, error: 'Player not found in room' });
+        }
+
+        // Update player's socket ID and clear disconnected flag
+        const oldSocketId = player.id;
+        player.id = socket.id;
+        player.disconnected = false;
+        player.deviceId = deviceId;
+
+        // Update socket info
+        socket.join(code);
+        socket.roomCode = code;
+        socket.role = 'player';
+
+        console.log(`Player ${player.name} rejoined room ${code} (old: ${oldSocketId}, new: ${socket.id})`);
+
+        // If game has started, also update gameState.players
+        if (room.gameState && room.gameState.players) {
+            const gamePlayer = room.gameState.players.find(p => p.id === oldSocketId);
+            if (gamePlayer) {
+                gamePlayer.id = socket.id;
+            }
+
+            // Also update grid ownership references
+            if (room.gameState.grid) {
+                for (let row = 0; row < room.gameState.gridSize.rows; row++) {
+                    for (let col = 0; col < room.gameState.gridSize.cols; col++) {
+                        if (room.gameState.grid[row][col].ownerId === oldSocketId) {
+                            room.gameState.grid[row][col].ownerId = socket.id;
+                        }
+                    }
+                }
+            }
+
+            // Update battle references if in battle
+            if (room.gameState.battle) {
+                if (room.gameState.battle.challengerId === oldSocketId) {
+                    room.gameState.battle.challengerId = socket.id;
+                }
+                if (room.gameState.battle.defenderId === oldSocketId) {
+                    room.gameState.battle.defenderId = socket.id;
+                }
+                if (room.gameState.battle.activePlayer === oldSocketId) {
+                    room.gameState.battle.activePlayer = socket.id;
+                }
+            }
+
+            // Update currentChallenger/currentDefender
+            if (room.gameState.currentChallenger === oldSocketId) {
+                room.gameState.currentChallenger = socket.id;
+            }
+            if (room.gameState.currentDefender === oldSocketId) {
+                room.gameState.currentDefender = socket.id;
+            }
+        }
+
+        callback({ success: true });
+
+        // Build rejoin data
+        const isRoomLeader = room.players.length > 0 && room.players[0].id === socket.id;
+        const rejoinData = {
+            playerId: socket.id,
+            playerName: player.name,
+            character: player.character,
+            category: player.category,
+            categories: room.categories,
+            availableCharacters: room.getAvailableCharacters(),
+            takenCategories: room.usedCategories,
+            gameStarted: room.gameStarted,
+            isRoomLeader: isRoomLeader,
+            readyCount: room.players.filter(p => p.ready).length,
+            totalPlayers: room.players.length
+        };
+
+        // Add game state data if game has started
+        if (room.gameState) {
+            rejoinData.grid = room.gameState.grid;
+            rejoinData.gridSize = room.gameState.gridSize;
+            rejoinData.players = room.gameState.players;
+            rejoinData.gamePhase = room.gameState.phase;
+            rejoinData.currentChallenger = room.gameState.currentChallenger;
+
+            // Add available opponents if it's their turn
+            if (room.gameState.currentChallenger === socket.id) {
+                rejoinData.availableOpponents = gameManager.getAdjacentOpponents(room, socket.id).map(id => {
+                    const p = room.gameState.players.find(pl => pl.id === id);
+                    return { id, name: p.name, character: p.character };
+                });
+            }
+
+            // Add battle data if in battle
+            if (room.gameState.battle) {
+                const battle = room.gameState.battle;
+                rejoinData.inBattle = battle.challengerId === socket.id || battle.defenderId === socket.id;
+                if (rejoinData.inBattle) {
+                    rejoinData.iAmChallenger = battle.challengerId === socket.id;
+                    rejoinData.activePlayer = battle.activePlayer;
+
+                    // Get current question
+                    const { getQuestion } = require('./questions');
+                    const currentQuestion = getQuestion(battle.category, battle.currentSlide);
+                    rejoinData.question = currentQuestion?.question || 'Question loading...';
+                }
+            }
+        }
+
+        // Send rejoin success with all state
+        socket.emit('rejoin-success', rejoinData);
+
+        // Notify others that player reconnected
+        io.to(code).emit('player-reconnected', {
+            playerId: socket.id,
+            playerName: player.name
         });
     });
 
@@ -240,26 +379,38 @@ io.on('connection', (socket) => {
         player.ready = true;
         room.usedCategories.push(selectedCategory);
 
-        callback({ success: true, category: selectedCategory });
+        const readyCount = room.players.filter(p => p.ready).length;
+        const totalPlayers = room.players.length;
+
+        callback({
+            success: true,
+            category: selectedCategory,
+            readyCount: readyCount,
+            totalPlayers: totalPlayers
+        });
         io.to(socket.roomCode).emit('player-ready', {
             playerId: socket.id,
             playerName: player.name,
             category: selectedCategory,
-            readyCount: room.players.filter(p => p.ready).length,
-            totalPlayers: room.players.length
+            readyCount: readyCount,
+            totalPlayers: totalPlayers
         });
     });
 
     // ============ GAME EVENTS ============
 
-    // Host starts the game
+    // Host or first player starts the game
     socket.on('start-game', (callback) => {
-        if (socket.role !== 'host') {
-            return callback({ success: false, error: 'Only host can start game' });
-        }
-
         const room = roomManager.getRoom(socket.roomCode);
         if (!room) return callback({ success: false, error: 'Room not found' });
+
+        // Allow host or the first player (room leader) to start
+        const isHost = socket.role === 'host';
+        const isFirstPlayer = room.players.length > 0 && room.players[0].id === socket.id;
+
+        if (!isHost && !isFirstPlayer) {
+            return callback({ success: false, error: 'Only the room leader can start the game' });
+        }
 
         const readyPlayers = room.players.filter(p => p.ready);
         if (readyPlayers.length < 2) {

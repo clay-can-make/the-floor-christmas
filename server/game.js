@@ -1,6 +1,62 @@
 // Game Logic for The Floor: Christmas Edition
 const { getQuestion, getQuestionCount } = require('./questions');
 
+// Fuzzy string matching - calculates similarity between two strings
+function calculateSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+
+    // Normalize strings: lowercase, trim, remove extra spaces and punctuation
+    const normalize = (s) => s.toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, '') // Remove punctuation
+        .replace(/\s+/g, ' ');   // Normalize spaces
+
+    const s1 = normalize(str1);
+    const s2 = normalize(str2);
+
+    if (s1 === s2) return 1;
+    if (s1.length === 0 || s2.length === 0) return 0;
+
+    // Check if one contains the other (for partial answers)
+    if (s1.includes(s2) || s2.includes(s1)) {
+        const shorter = s1.length < s2.length ? s1 : s2;
+        const longer = s1.length < s2.length ? s2 : s1;
+        return shorter.length / longer.length;
+    }
+
+    // Levenshtein distance for fuzzy matching
+    const matrix = [];
+
+    for (let i = 0; i <= s1.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= s2.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= s1.length; i++) {
+        for (let j = 1; j <= s2.length; j++) {
+            const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,      // deletion
+                matrix[i][j - 1] + 1,      // insertion
+                matrix[i - 1][j - 1] + cost // substitution
+            );
+        }
+    }
+
+    const maxLen = Math.max(s1.length, s2.length);
+    const distance = matrix[s1.length][s2.length];
+    return (maxLen - distance) / maxLen;
+}
+
+// Check if answer is correct (50% similarity threshold)
+function isAnswerCorrect(playerAnswer, correctAnswer) {
+    const similarity = calculateSimilarity(playerAnswer, correctAnswer);
+    console.log(`Answer check: "${playerAnswer}" vs "${correctAnswer}" = ${(similarity * 100).toFixed(1)}% match`);
+    return similarity >= 0.5;
+}
+
 class GameManager {
     constructor(io, roomManager) {
         this.io = io;
@@ -304,29 +360,64 @@ class GameManager {
             return;
         }
 
-        // Already waiting for confirmation
+        // Already processing an answer
         if (battle.waitingForConfirmation) {
-            console.log('handleBuzz early return: already waiting for confirmation');
+            console.log('handleBuzz early return: already processing');
             return;
         }
 
         battle.waitingForConfirmation = true;
-        battle.lastBuzz = { playerId, answer };
 
         const playerName = playerId === battle.challengerId ? battle.challengerName : battle.defenderName;
-        console.log('Emitting buzz-received to room:', roomCode, { playerId, playerName, answer });
 
         // Get the current question's correct answer
         const currentQuestion = getQuestion(battle.category, battle.currentSlide);
         const correctAnswer = currentQuestion?.answer || 'Unknown';
 
-        // Notify host to confirm
+        // Auto-check the answer with fuzzy matching
+        const correct = isAnswerCorrect(answer, correctAnswer);
+
+        // Notify all players of the buzz (for display purposes)
         this.io.to(roomCode).emit('buzz-received', {
             playerId,
             playerName,
             answer,
-            correctAnswer
+            correctAnswer,
+            autoChecked: true
         });
+
+        // Small delay so players can see what was answered, then process result
+        setTimeout(() => {
+            battle.waitingForConfirmation = false;
+
+            if (correct) {
+                // Correct answer - emit confirmation and auto-switch turns
+                this.io.to(roomCode).emit('answer-confirmed', {
+                    correct: true,
+                    playerId: battle.activePlayer,
+                    playerAnswer: answer,
+                    correctAnswer: correctAnswer
+                });
+
+                // Auto-switch to next player
+                this.switchTurn(roomCode, battle.activePlayer);
+            } else {
+                // Wrong answer - give them a new question
+                battle.currentSlide++;
+                const nextQuestion = getQuestion(battle.category, battle.currentSlide);
+
+                this.io.to(roomCode).emit('answer-confirmed', {
+                    correct: false,
+                    playerId: battle.activePlayer,
+                    playerAnswer: answer,
+                    correctAnswer: correctAnswer,
+                    newTime: battle.activePlayer === battle.challengerId ? battle.challengerTime : battle.defenderTime,
+                    question: nextQuestion?.question || 'No more questions',
+                    questionNumber: battle.currentSlide + 1,
+                    totalQuestions: getQuestionCount(battle.category)
+                });
+            }
+        }, 500); // 500ms delay to show the answer
     }
 
     // Host confirms answer
